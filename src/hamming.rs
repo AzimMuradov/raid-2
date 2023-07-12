@@ -9,9 +9,9 @@ use bitvec::order::Lsb0;
 use bitvec::prelude::BitStore;
 use bitvec::vec::BitVec;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Hamming {
-    code: BitBox<u8>,
+    pub code: BitBox<u8>,
     n: u8,
     parity_n: u8,
     all_n: u8,
@@ -165,6 +165,7 @@ mod tests {
     #[test]
     fn test_new() {
         let hamming = Hamming::new(4);
+
         assert_eq!(hamming.n, 4);
         assert_eq!(hamming.parity_n, 3);
         assert_eq!(hamming.all_n, 7);
@@ -174,6 +175,7 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let hamming = Hamming::from_buffer(&[true, false, true, true]);
+
         assert_eq!(hamming.n, 4);
         assert_eq!(hamming.parity_n, 3);
         assert_eq!(hamming.all_n, 7);
