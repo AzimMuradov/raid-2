@@ -278,6 +278,13 @@ mod tests {
         assert_eq!(hamming.read(3), true);
     }
 
+    #[test]
+    #[should_panic]
+    fn test_panic_on_read() {
+        let hamming = Hamming::new(4);
+        hamming.read(100);
+    }
+
 
     #[test]
     fn test_zeroed_read_with_ec() {
@@ -307,6 +314,13 @@ mod tests {
         assert_eq!(hamming.code, bitbox![u8, Lsb0; 0, 1, 1, 0, 0, 1, 1]);
     }
 
+    #[test]
+    #[should_panic]
+    fn test_panic_on_read_with_ec() {
+        let mut hamming = Hamming::new(4);
+        hamming.read_with_ec(100);
+    }
+
 
     #[test]
     fn test_zeroed_write() {
@@ -324,6 +338,13 @@ mod tests {
         hamming.write(2, false);
 
         assert_eq!(hamming.code, bitbox![u8, Lsb0; 0, 0, 1, 1, 0, 0, 1]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_panic_on_write() {
+        let mut hamming = Hamming::new(4);
+        hamming.write(100, true);
     }
 
 

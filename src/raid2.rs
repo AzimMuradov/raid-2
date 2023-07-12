@@ -131,6 +131,13 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_panic_on_read() {
+        let raid2 = Raid2::new(4, 128);
+        raid2.read(100, 100);
+    }
+
+    #[test]
     fn test_read_with_ec() {
         let mut raid2 = Raid2::new(4, 128);
 
@@ -141,6 +148,14 @@ mod tests {
         assert_eq!(raid2.read_with_ec(2, 3), false);
         assert_eq!(raid2.strips, vec![Hamming::new(4); 128]);
     }
+
+    #[test]
+    #[should_panic]
+    fn test_panic_on_read_with_ec() {
+        let mut raid2 = Raid2::new(4, 128);
+        raid2.read_with_ec(100, 100);
+    }
+
 
     #[test]
     fn test_write() {
@@ -164,6 +179,13 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_panic_on_write() {
+        let mut raid2 = Raid2::new(4, 128);
+        raid2.write(100, 100, true);
+    }
+
+    #[test]
     fn test_delete() {
         let mut raid2 = Raid2::new(4, 128);
 
@@ -171,5 +193,12 @@ mod tests {
         raid2.delete(0, 2);
 
         assert_eq!(raid2.strips, vec![Hamming::new(4); 128]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_panic_on_delete() {
+        let mut raid2 = Raid2::new(4, 128);
+        raid2.delete(100, 100);
     }
 }
