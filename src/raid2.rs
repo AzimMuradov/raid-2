@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 use bitvec::bitvec;
 use bitvec::macros::internal::funty::Fundamental;
@@ -7,7 +7,6 @@ use bitvec::vec::BitVec;
 
 use crate::hamming::Hamming;
 
-#[derive(Debug)]
 pub struct Raid2 {
     strips: Vec<Hamming>,
     disk_cnt: u8,
@@ -52,7 +51,7 @@ impl Raid2 {
 }
 
 
-impl Display for Raid2 {
+impl Debug for Raid2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.strips.iter().map(|h| write!(f, "{}\n", h.read_all())).collect()
     }
