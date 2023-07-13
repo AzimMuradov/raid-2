@@ -1,7 +1,6 @@
 use std::fmt::{Debug, Formatter};
 
 use bitvec::bitvec;
-use bitvec::macros::internal::funty::Fundamental;
 use bitvec::order::Lsb0;
 use bitvec::vec::BitVec;
 
@@ -27,7 +26,7 @@ impl Raid2 {
         let mut data = vec![bitvec![u8, Lsb0; 0; self.disk_size]; self.disk_cnt as usize];
         for (i, strip) in self.strips.iter().enumerate() {
             for (j, bit) in strip.read_all().iter().enumerate() {
-                data[j].set(i, !bit.as_bool());
+                data[j].set(i, *bit);
             }
         }
         data
@@ -37,7 +36,7 @@ impl Raid2 {
         let mut data = vec![bitvec![u8, Lsb0; 0; self.disk_size]; self.disk_cnt as usize];
         for (i, strip) in self.strips.iter_mut().enumerate() {
             for (j, bit) in strip.read_all_with_ec().iter().enumerate() {
-                data[j].set(i, !bit.as_bool());
+                data[j].set(i, *bit);
             }
         }
         data
