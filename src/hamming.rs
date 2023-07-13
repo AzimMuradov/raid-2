@@ -4,7 +4,7 @@ use bitvec::{bitbox, bitvec};
 use bitvec::boxed::BitBox;
 use bitvec::field::BitField;
 use bitvec::index::{BitEnd, BitIdx};
-use bitvec::macros::internal::funty::{Fundamental, Integral};
+use bitvec::macros::internal::funty::Fundamental;
 use bitvec::order::Lsb0;
 use bitvec::prelude::BitStore;
 use bitvec::vec::BitVec;
@@ -12,7 +12,7 @@ use bitvec::vec::BitVec;
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Hamming {
     pub code: BitBox<u8>,
-    n: u8,
+    data_n: u8,
     parity_n: u8,
     all_n: u8,
 }
@@ -23,7 +23,7 @@ impl Hamming {
         let all_n = parity_n + n;
         Hamming {
             code: bitbox![u8, Lsb0; 0; all_n as usize],
-            n,
+            data_n: n,
             parity_n,
             all_n,
         }
@@ -39,15 +39,15 @@ impl Hamming {
 
 
     pub fn read_all(&self) -> BitBox<u8> {
-        let mut bv = bitvec![u8, Lsb0; 0; self.n as usize];
-        let mut j: usize = 0;
+        let mut data = bitvec![u8, Lsb0; 0; self.data_n as usize];
+        let mut data_i: usize = 0;
         for i in 1..=self.all_n {
             if !i.is_power_of_two() {
-                bv.set(j, *self.code.get((i - 1) as usize).unwrap());
-                j += 1;
+                data.set(data_i, *self.code.get((i - 1) as usize).unwrap());
+                data_i += 1;
             }
         }
-        return BitBox::from_bitslice(bv.as_bitslice());
+        return BitBox::from_bitslice(data.as_bitslice());
     }
 
     pub fn read_all_with_ec(&mut self) -> BitBox<u8> {
@@ -57,15 +57,15 @@ impl Hamming {
 
 
     pub fn read(&self, index: u8) -> bool {
-        assert!(index < self.n);
+        assert!(index < self.data_n);
 
-        let mut j = 1;
+        let mut data_i = 1;
         for i in 1..=self.all_n {
             if !i.is_power_of_two() {
-                if j == index + 1 {
+                if data_i == index + 1 {
                     return self.code[(i - 1) as usize];
                 }
-                j += 1;
+                data_i += 1;
             }
         }
 
@@ -73,22 +73,22 @@ impl Hamming {
     }
 
     pub fn read_with_ec(&mut self, index: u8) -> bool {
-        assert!(index < self.n);
+        assert!(index < self.data_n);
         self.correct_if_needed();
         self.read(index)
     }
 
     pub fn write(&mut self, index: u8, value: bool) {
-        assert!(index < self.n);
+        assert!(index < self.data_n);
 
-        let mut j = 1;
+        let mut data_i = 1;
         for i in 1..=self.all_n {
             if !i.is_power_of_two() {
-                if j == index + 1 {
+                if data_i == index + 1 {
                     self.code.set((i - 1) as usize, value);
                     break;
                 }
-                j += 1;
+                data_i += 1;
             }
         }
 
@@ -108,52 +108,49 @@ impl Hamming {
             BitVec::from_iter(self.calculate_syndromes().into_iter());
 
         if syndromes_bits.any() {
-            let index: usize = syndromes_bits.load_le();
-            let bit = self.code.get(index - 1).unwrap().as_bool();
-            self.code.set(index - 1, bit);
+            let bit_i: usize = syndromes_bits.load_le();
+            let bit = *self.code.get(bit_i - 1).unwrap();
+            self.code.set(bit_i - 1, !bit);
         }
     }
 
-
-    fn rewrite_syndromes(&mut self) {
-        for k in 0..self.parity_n {
-            self.code.set(2usize.pow(k as u32) - 1, false);
-        }
-
-        let syndromes = self.calculate_syndromes();
-        let syndromes_slice = syndromes.as_slice();
-
-        for k in 0..self.parity_n {
-            self.code.set(2usize.pow(k as u32) - 1, syndromes_slice[k as usize]);
-        }
-    }
 
     fn calculate_syndromes(&self) -> Vec<bool> {
+        // code vector * bit matrix = syndromes vector
         BitIdx::MIN.range(BitEnd::new(self.parity_n).unwrap())
             .map(|i| {
                 let row: BitVec<u8> = BitVec::from_iter(
                     (1..=self.all_n).map(|x| x.get_bit::<Lsb0>(i))
                 );
-                let sum = self.code.iter().zip(row.iter())
-                    .fold(0u32, |sum, (a, b)| {
-                        sum + (a.as_u32() & b.as_u32())
-                    });
-
-                sum % 2u32 == 1
+                self.code.iter().zip(row.iter()).fold(false, |sum, (a, b)| {
+                    sum ^ (*a && *b)
+                })
             })
             .collect()
+    }
+
+    fn rewrite_syndromes(&mut self) {
+        // reset syndromes
+        for k in 0..self.parity_n {
+            self.code.set((1 << k) - 1, false);
+        }
+
+        // calculate new syndromes
+        let syndromes = self.calculate_syndromes();
+        let syndromes_slice = syndromes.as_slice();
+
+        for k in 0..self.parity_n {
+            self.code.set((1 << k) - 1, syndromes_slice[k as usize]);
+        }
     }
 
 
     fn calculate_parity_n(m: u8) -> u8 {
         let mut k: u8 = 0;
-        loop {
-            if 2.pow(k as u32) >= k + m + 1 {
-                break k;
-            } else {
-                k += 1;
-            }
+        while 1 << k < k + m + 1 {
+            k += 1;
         }
+        return k;
     }
 }
 
@@ -166,7 +163,7 @@ mod tests {
     fn test_new() {
         let hamming = Hamming::new(4);
 
-        assert_eq!(hamming.n, 4);
+        assert_eq!(hamming.data_n, 4);
         assert_eq!(hamming.parity_n, 3);
         assert_eq!(hamming.all_n, 7);
         assert_eq!(hamming.code, bitbox![u8, Lsb0; 0; 7])
@@ -176,7 +173,7 @@ mod tests {
     fn test_from_buffer() {
         let hamming = Hamming::from_buffer(&[true, false, true, true]);
 
-        assert_eq!(hamming.n, 4);
+        assert_eq!(hamming.data_n, 4);
         assert_eq!(hamming.parity_n, 3);
         assert_eq!(hamming.all_n, 7);
         assert_eq!(hamming.code, bitbox![u8, Lsb0; 0, 1, 1, 0, 0, 1, 1])
